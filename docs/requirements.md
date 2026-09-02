@@ -1,151 +1,354 @@
 # Requisitos de Actualizar-Linux v2.0
 
-## Requisitos Funcionales
+## 1. Propósito
 
-### RF-01: Actualización del Sistema
+Este documento define los requisitos funcionales y no funcionales de Actualizar-Linux v2.0.
 
-La aplicación debe ejecutar `apt-get update` seguido de `apt-get upgrade`. La segunda operación **no** debe ejecutarse si la actualización de repositorios falla.
+Los requisitos describen **qué debe proporcionar el sistema**, sin definir necesariamente la tecnología o implementación utilizada para conseguirlo.
 
-### RF-02: Autoremove
+---
 
-Permitir ejecutar `apt-get autoremove` para eliminar dependencias innecesarias.
+## 2. Alcance
 
-### RF-03: Clean
+Actualizar-Linux v2.0 es una aplicación de escritorio orientada al mantenimiento básico de sistemas Linux basados en Debian y Ubuntu mediante el sistema de gestión de paquetes APT.
 
-Permitir ejecutar `apt-get clean` para limpiar la caché local.
+La versión inicial contempla las siguientes operaciones:
 
-### RF-04: Operaciones Independientes
+- Actualización de los índices de paquetes.
+- Actualización de paquetes instalados.
+- Eliminación de paquetes que ya no son necesarios.
+- Limpieza de la caché de paquetes.
+- Visualización del resultado de las operaciones.
+- Gestión de privilegios administrativos cuando sean necesarios.
+- Registro de eventos relevantes.
+- Instalación y distribución como aplicación de escritorio.
 
-El usuario debe poder ejecutar cada operación (update, upgrade, autoremove, clean) de forma independiente.
+---
 
-### RF-05: Interfaz Gráfica
+## 3. Sistemas objetivo
 
-La GUI debe permitir:
+La primera versión estará orientada a sistemas que utilicen APT.
 
-- Iniciar actualizaciones
-- Ejecutar autoremove y clean
-- Visualizar estado y resultados de operaciones
-- Mostrar mensajes de éxito o error
+Los sistemas objetivo iniciales son:
 
-### RF-06: Ejecución Controlada
+- Debian.
+- Ubuntu.
+- Linux Mint.
 
-Las operaciones del sistema deben ejecutarse mediante argumentos estructurados, evitando concatenación insegura de comandos.
+También podrá funcionar en otras distribuciones compatibles con APT, siempre que sean validadas mediante pruebas.
 
-### RF-07: Permisos Administrativos
+La compatibilidad con una distribución no se considerará garantizada únicamente por utilizar APT.
 
-Utilizar pkexec como mecanismo principal de elevación de privilegios.
+---
 
-### RF-08: Cancelación de Permisos
+# 4. Requisitos funcionales
 
-Si el usuario cancela la solicitud de privilegios, la operación debe abortarse y notificarse como cancelada.
+## RF-01 — Actualización de repositorios
 
-### RF-09: Manejo de Errores
+El sistema deberá permitir actualizar los índices locales de paquetes utilizando el mecanismo de gestión de paquetes del sistema.
 
-Detectar y comunicar errores de:
+La operación deberá informar al usuario si finalizó correctamente o si se produjo un error.
 
-- Ausencia de apt-get
-- Fallo de elevación de privilegios
-- Errores de APT
-- Errores inesperados
+---
 
-## Requisitos de Interfaz
+## RF-02 — Actualización de paquetes
 
-### RF-10: Estado de Operación
+El sistema deberá permitir actualizar los paquetes instalados mediante el mecanismo de gestión de paquetes del sistema.
 
-La GUI debe mostrar estados claros: "Listo", "Actualizando repositorios...", "Operación completada", "Operación fallida", etc.
+La operación deberá informar al usuario del resultado de la ejecución.
 
-### RF-11: Salida de APT
+---
 
-Permitir visualizar información relevante de APT mediante área expandible o log integrado.
+## RF-03 — Actualización completa
 
-### RF-12: No Bloquear la Interfaz
+El sistema deberá permitir ejecutar una actualización completa del sistema mediante una secuencia de operaciones definida por las reglas de negocio.
 
-Las operaciones de APT deben ejecutarse en hilos separados sin congelar la GUI.
+La actualización completa deberá respetar las dependencias entre sus operaciones.
 
-## Requisitos de Instalación
+---
 
-### RF-13: Paquete .deb
+## RF-04 — Eliminación de paquetes innecesarios
 
-Distribución mediante paquete `actualizar-linux_2.0.0_amd64.deb`
+El sistema deberá permitir ejecutar una operación equivalente a `autoremove` para que APT determine los paquetes que ya no son necesarios.
 
-### RF-14: Instalación Completa
+La aplicación no deberá determinar por sí misma qué paquetes deben eliminarse.
 
-El paquete debe instalar:
+---
 
-- Aplicación
-- Archivos necesarios
-- Icono
-- Archivo .desktop
-- Dependencias declaradas
+## RF-05 — Limpieza de caché
 
-### RF-15: Lanzador
+El sistema deberá permitir ejecutar una operación equivalente a `clean` para limpiar la caché de paquetes gestionada por APT.
 
-La aplicación debe aparecer en el menú de aplicaciones del escritorio.
+---
 
-### RF-16: Desinstalación Limpia
+## RF-06 — Operaciones independientes
 
-Eliminar componentes de la aplicación sin afectar archivos personales.
+Las operaciones individuales de mantenimiento deberán poder ejecutarse de forma independiente cuando su naturaleza lo permita.
 
-## Requisitos de Calidad
+Como mínimo, deberán poder ejecutarse de forma independiente:
 
-### RQ-01: Código Mantenible
+- Actualización de repositorios.
+- Actualización de paquetes.
+- Eliminación de paquetes innecesarios.
+- Limpieza de caché.
 
-- PEP 8
-- Nombres descriptivos
-- Funciones pequeñas
-- Type hints
-- Documentación
+---
 
-### RQ-02: Testing Automatizado
+## RF-07 — Interfaz gráfica
 
-- Unit tests
-- Integration tests
-- No ejecutar operaciones destructivas en tests
+El sistema deberá proporcionar una interfaz gráfica de escritorio que permita al usuario:
 
-### RQ-03: CI/CD
+- Iniciar las operaciones disponibles.
+- Visualizar el estado de una operación.
+- Visualizar información relevante de la ejecución.
+- Identificar si una operación terminó correctamente, falló o fue cancelada.
 
-GitHub Actions con:
+---
 
-- Linting
-- Tests
-- Build del paquete
+## RF-08 — Gestión de privilegios
 
-### RQ-04: Logging
+El sistema deberá solicitar privilegios administrativos únicamente cuando una operación los requiera.
 
-Uso del sistema `logging` de Python para diagnosticar problemas.
+El usuario deberá poder identificar cuándo el sistema requiere autorización para continuar.
 
-### RQ-05: Seguridad
+---
 
-- No ejecución arbitraria de comandos
-- Validación de operaciones
-- Privilegios mínimos necesarios
-- No almacenar credenciales
+## RF-09 — Cancelación de autorización
 
-## Requisitos No Funcionales
+Si el usuario rechaza o cancela una solicitud de autorización administrativa, el sistema deberá informar que la operación no fue ejecutada.
 
-### RNF-01: Usabilidad
+La cancelación de una solicitud de autorización deberá distinguirse de un error interno de la aplicación.
 
-Usuario con conocimientos básicos de Linux debe poder instalar y usar la aplicación sin conocer Python.
+---
 
-### RNF-02: Rendimiento
+## RF-10 — Manejo de errores
 
-No consumir recursos significativos en inactividad.
+El sistema deberá detectar y comunicar, como mínimo, las siguientes situaciones:
 
-### RNF-03: Estabilidad
+- APT no disponible.
+- Error durante la ejecución de una operación.
+- Fallo al obtener privilegios administrativos.
+- Cancelación de la autorización.
+- Error inesperado durante la ejecución.
 
-Un error en una operación no debe dejar la aplicación en estado inconsistente.
+Los errores deberán comunicarse sin provocar el cierre inesperado de la aplicación.
 
-### RNF-04: Transparencia
+---
 
-El usuario debe saber qué operación se ejecuta y su resultado.
+## RF-11 — Estado de las operaciones
 
-### RNF-05: Distribución
+El sistema deberá proporcionar información sobre el estado de las operaciones en ejecución.
 
-El usuario final no debe necesitar clonar el repositorio ni instalar dependencias manualmente.
+Como mínimo, deberá distinguir entre:
 
-## Compatibilidad Inicial
+- Pendiente.
+- En ejecución.
+- Completada correctamente.
+- Fallida.
+- Cancelada.
 
-- Debian
-- Ubuntu
-- Linux Mint
-- Otras derivadas con APT
+---
+
+## RF-12 — Visualización de salida
+
+El sistema deberá permitir al usuario visualizar información relevante producida durante la ejecución de las operaciones de mantenimiento.
+
+La salida deberá utilizarse principalmente para proporcionar transparencia sobre lo que está realizando el sistema.
+
+---
+
+## RF-13 — Ejecución no bloqueante
+
+Las operaciones que puedan tardar un tiempo significativo deberán ejecutarse sin bloquear la interfaz gráfica.
+
+El usuario deberá poder observar el estado de la operación mientras esta se encuentra en ejecución.
+
+---
+
+## RF-14 — Registro de eventos
+
+El sistema deberá registrar eventos relevantes de la ejecución, incluyendo:
+
+- Inicio de operaciones.
+- Finalización de operaciones.
+- Resultados.
+- Errores.
+- Cancelaciones.
+
+El registro deberá respetar las reglas de seguridad definidas para el proyecto.
+
+---
+
+## RF-15 — Distribución mediante paquete
+
+El sistema deberá poder distribuirse mediante un paquete compatible con sistemas Debian/Ubuntu.
+
+El formato inicial de distribución será `.deb`.
+
+---
+
+## RF-16 — Instalación como aplicación
+
+La instalación del paquete deberá proporcionar los elementos necesarios para utilizar Actualizar-Linux como una aplicación de escritorio.
+
+Esto incluye, según corresponda:
+
+- Archivos de aplicación.
+- Dependencias necesarias.
+- Lanzador de escritorio.
+- Icono de aplicación.
+
+---
+
+## RF-17 — Lanzamiento desde el escritorio
+
+Después de una instalación correcta, el usuario deberá poder iniciar la aplicación mediante el mecanismo de lanzamiento proporcionado por el entorno de escritorio.
+
+---
+
+## RF-18 — Desinstalación
+
+El sistema deberá poder desinstalarse mediante los mecanismos habituales de gestión de paquetes del sistema.
+
+La desinstalación no deberá eliminar archivos personales del usuario que no pertenezcan a la aplicación.
+
+---
+
+# 5. Requisitos no funcionales
+
+## RNF-01 — Mantenibilidad
+
+El código deberá estar organizado de manera modular, con responsabilidades claramente separadas.
+
+La arquitectura deberá facilitar la modificación o sustitución de componentes sin afectar innecesariamente al resto del sistema.
+
+---
+
+## RNF-02 — Testabilidad
+
+Los componentes principales deberán poder probarse de forma automatizada.
+
+La arquitectura deberá permitir aislar dependencias externas como:
+
+- APT.
+- Procesos del sistema.
+- Gestión de privilegios.
+- Sistema de archivos cuando sea necesario.
+
+---
+
+## RNF-03 — Calidad del código
+
+El proyecto deberá utilizar herramientas automatizadas para mantener estándares de calidad de código.
+
+Como mínimo se contemplan:
+
+- Linting.
+- Formateo.
+- Comprobación de tipos.
+
+---
+
+## RNF-04 — Estabilidad
+
+Los errores durante una operación no deberán provocar el cierre inesperado de la aplicación.
+
+La aplicación deberá mantener un estado coherente después de una operación exitosa, fallida o cancelada.
+
+---
+
+## RNF-05 — Rendimiento
+
+La interfaz gráfica deberá mantenerse receptiva durante las operaciones de mantenimiento.
+
+Las operaciones externas de larga duración no deberán ejecutarse directamente en el hilo principal de la interfaz.
+
+---
+
+## RNF-06 — Usabilidad
+
+Las operaciones disponibles deberán ser comprensibles para un usuario con conocimientos básicos de administración de un sistema Linux.
+
+Los estados, errores y resultados deberán presentarse mediante mensajes claros.
+
+---
+
+## RNF-07 — Transparencia
+
+El sistema deberá proporcionar suficiente información para que el usuario pueda conocer:
+
+- Qué operación se está ejecutando.
+- Si requiere autorización.
+- Si la operación está en progreso.
+- Si terminó correctamente.
+- Si falló.
+- Si fue cancelada.
+
+---
+
+## RNF-08 — Seguridad
+
+El sistema deberá minimizar la ejecución de operaciones con privilegios administrativos y evitar comportamientos que permitan ejecutar comandos arbitrarios desde la interfaz de usuario.
+
+Los detalles concretos de implementación de estas medidas se definirán en las decisiones técnicas y reglas de negocio correspondientes.
+
+---
+
+## RNF-09 — Distribución
+
+La aplicación deberá poder instalarse como software de escritorio sin exigir al usuario final conocimientos sobre:
+
+- Python.
+- `pip`.
+- Entornos virtuales.
+- Clonación del repositorio.
+- Ejecución manual del código fuente.
+
+Los detalles de empaquetado se definirán durante la fase de distribución.
+
+---
+
+## RNF-10 — Compatibilidad
+
+El sistema deberá desarrollarse teniendo como objetivo los sistemas APT definidos en el alcance.
+
+Las versiones y distribuciones concretas soportadas deberán validarse mediante pruebas antes de declararse oficialmente compatibles.
+
+---
+
+# 6. Restricciones
+
+La versión inicial estará limitada a sistemas que utilicen APT.
+
+No forman parte del alcance inicial:
+
+- `dnf`.
+- `pacman`.
+- `zypper`.
+- Administración remota.
+- Servicios en la nube.
+- API o servidor backend.
+- Telemetría.
+- Sistema de cuentas.
+- Sistema de plugins.
+- Actualización automática de la propia aplicación.
+- Repositorio propio de paquetes.
+- Funciones avanzadas de administración de paquetes.
+- Funciones de ciberseguridad.
+
+---
+
+# 7. Criterios generales de aceptación
+
+La versión inicial podrá considerarse funcionalmente completa cuando:
+
+1. Las operaciones principales de mantenimiento puedan ejecutarse desde la interfaz gráfica.
+2. Las operaciones que requieren privilegios puedan solicitar autorización correctamente.
+3. La aplicación gestione correctamente ejecuciones exitosas, errores y cancelaciones.
+4. La interfaz permanezca receptiva durante operaciones de larga duración.
+5. La salida relevante de APT pueda ser consultada por el usuario.
+6. Los eventos importantes queden registrados.
+7. Los componentes principales dispongan de pruebas automatizadas.
+8. La aplicación pueda distribuirse mediante un paquete `.deb`.
+9. La instalación permita ejecutar la aplicación como software de escritorio.
+10. La desinstalación pueda realizarse sin eliminar archivos personales del usuario.
