@@ -1,56 +1,83 @@
-# Actualizar-Linux v2.0
+# Documentación de Actualizar-Linux v2.0
 
-Aplicación de mantenimiento para sistemas Linux basados en Debian/Ubuntu con interfaz gráfica.
+Esta carpeta contiene la documentación técnica y de diseño de Actualizar-Linux v2.0.
 
-## Visión General
+La documentación se utiliza como referencia durante el desarrollo del proyecto y debe mantenerse alineada con la implementación y las pruebas.
 
-Actualizar-Linux es una herramienta que facilita tareas de mantenimiento del sistema mediante una interfaz gráfica intuitiva, utilizando APT como gestor de paquetes. Esta versión 2.0 representa una evolución completa del script Bash original, implementada en Python con arquitectura modular.
+## Documentos
 
-## Características Principales
+### Requisitos
 
-- **Actualización del sistema**: Actualiza repositorios y paquetes instalados
-- **Limpieza automática**: Elimina paquetes innecesarios (autoremove)
-- **Limpieza de caché**: Elimina archivos de paquetes descargados (clean)
-- **Interfaz gráfica**: GUI moderna con PySide6
-- **Operaciones independientes**: Ejecuta cada tarea por separado
-- **Logging integrado**: Registro completo de operaciones
-- **Distribución nativa**: Paquete .deb para instalación sencilla
+[`requirements.md`](requirements.md)
 
-## Requisitos del Sistema
+Define los requisitos funcionales y no funcionales del sistema, además de las restricciones y el alcance de la versión inicial.
 
-- Linux Debian/Ubuntu o derivados
-- APT (apt-get)
-- Python 3.12+
-- pkexec (para elevación de privilegios)
+### Reglas de negocio
 
-## Instalación
+[`business-rules.md`](business-rules.md)
 
-```bash
-sudo dpkg -i actualizar-linux_2.0.0_amd64.deb
-Documentación
-Requisitos
+Define las reglas que determinan el comportamiento del sistema durante las diferentes operaciones.
 
-Casos de Uso
+### Casos de uso
 
-Arquitectura
+[`use-cases.md`](use-cases.md)
 
-Decisiones Técnicas
+Describe las interacciones entre los actores y el sistema, incluyendo los flujos principales y alternativos.
 
-Guía de Desarrollo
+### Arquitectura
 
-Fuera de Alcance (v2.0)
-Soporte para otros gestores (dnf, pacman, zypper)
+[`architecture.md`](architecture.md)
 
-Actualización automática de la aplicación
+Describe la estructura del sistema, sus capas, componentes, responsabilidades y dependencias.
 
-Sistema de plugins
+### Decisiones técnicas
 
-Telemetría
+[`technical-decisions.md`](technical-decisions.md)
 
-Administración remota
+Documenta las principales decisiones técnicas del proyecto y las razones por las que fueron adoptadas.
 
-Versión móvil
+### Desarrollo
 
-Licencia
-[Especificar licencia]
-```
+[`development.md`](development.md)
+
+Describe cómo preparar el entorno de desarrollo, instalar dependencias, ejecutar el proyecto y utilizar las herramientas de desarrollo.
+
+### Pruebas
+
+[`testing.md`](testing.md)
+
+Define la estrategia de pruebas, los niveles de testing, los tipos de pruebas y los criterios utilizados para validar el sistema.
+
+## Organización de la documentación
+
+La documentación sigue una separación de responsabilidades:
+
+```text
+requirements.md
+        │
+        ├── ¿Qué debe hacer el sistema?
+        │
+        ▼
+business-rules.md
+        │
+        ├── ¿Qué reglas debe respetar?
+        │
+        ▼
+use-cases.md
+        │
+        ├── ¿Cómo interactúan los actores con el sistema?
+        │
+        ▼
+architecture.md
+        │
+        ├── ¿Cómo se estructura técnicamente?
+        │
+        ▼
+technical-decisions.md
+        │
+        ├── ¿Por qué se tomaron determinadas decisiones?
+        │
+        ▼
+development.md / testing.md
+        │
+        └── ¿Cómo se desarrolla y valida?
