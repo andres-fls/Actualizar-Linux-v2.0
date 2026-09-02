@@ -1,252 +1,387 @@
-# Arquitectura
-
-## Estilo Arquitectónico
-
-Arquitectura por capas con separación de responsabilidades:
-┌─────────────────────────────────────────────────────┐
-│ Presentation │
-│ GUI (PySide6) │
-└────────────────────┬────────────────────────────────┘
-│
-▼
-┌─────────────────────────────────────────────────────┐
-│ Application │
-│ Use Cases │
-└────────────────────┬────────────────────────────────┘
-│
-▼
-┌─────────────────────────────────────────────────────┐
-│ Core │
-│ Entities / Ports │
-└────────────────────┬────────────────────────────────┘
-│
-▼
-┌─────────────────────────────────────────────────────┐
-│ Infrastructure │
-│ APT / Process / Privileges │
-└────────────────────┬────────────────────────────────┘
-│
-▼
-┌─────────────────────────────────────────────────────┐
-│ Linux / apt-get │
-└─────────────────────────────────────────────────────┘
+Arquitectura — Actualizar-Linux v2.0
 
-text
+1. Propósito
 
-## Capas
+Actualizar-Linux v2.0 utilizará una arquitectura modular y sencilla, adecuada para el tamaño y objetivo del proyecto.
 
-### Presentation (GUI)
+La arquitectura busca:
 
-- Interfaz gráfica con PySide6
-- Muestra información y estados
-- Recibe acciones del usuario
-- **No ejecuta** APT directamente
+- Separar la interfaz gráfica de la lógica de las operaciones.
+- Evitar que la GUI ejecute directamente comandos del sistema.
+- Facilitar las pruebas.
+- Mantener el código organizado.
+- Permitir cambiar o ampliar componentes sin modificar todo el proyecto.
+- Evitar abstracciones innecesarias.
 
-### Application
+La arquitectura podrá simplificarse durante la implementación si alguna separación demuestra no aportar valor real al proyecto.
 
-- Casos de uso (UpdateSystem, Autoremove, Clean)
-- Coordina flujos de operaciones
-- Implementa reglas de negocio
+---
 
-### Core
+2. Estructura general
 
-- Entidades: Operation, OperationResult
-- Estados: PENDING, RUNNING, SUCCESS, FAILED, CANCELLED
-- Interfaces/Ports: APTProvider, CommandRunner, PrivilegeProvider
-- **Independiente** de frameworks y sistema operativo
+La aplicación se organizará conceptualmente en cuatro partes:
 
-### Infrastructure
+┌──────────────────────────────┐
+│       Presentation           │
+│          PySide6             │
+│        Interfaz GUI          │
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│        Application           │
+│          Casos de uso        │
+│     Lógica de operaciones    │
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│            Core              │
+│     Reglas y contratos       │
+│   Modelos e interfaces       │
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│       Infrastructure         │
+│ APT / procesos / privilegios │
+│           logging            │
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│        Linux / APT           │
+│       apt-get / pkexec       │
+└──────────────────────────────┘
 
-- **APT**: Operaciones con apt-get
-- **Process**: Ejecución de comandos con subprocess
-- **Privileges**: Elevación mediante pkexec
-- **Logging**: Sistema de logs
+Esta división es conceptual. No se pretende implementar una arquitectura excesivamente compleja.
 
-## Componentes Principales
+---
 
-### OperationResult
+3. Presentation
 
-Representa el resultado de una operación:
+La capa "Presentation" contiene la interfaz gráfica de usuario.
 
-- `status`: SUCCESS / FAILED / CANCELLED
-- `exit_code`: int
-- `stdout`: str
-- `stderr`: str
-- `message`: str
+Responsabilidades
 
-### APTService (implementa APTProvider)
+- Mostrar la ventana principal.
+- Mostrar las operaciones disponibles.
+- Permitir al usuario iniciar una operación.
+- Mostrar el estado de la operación.
+- Mostrar el resultado y la salida relevante.
+- Informar errores y cancelaciones.
+- Mantener la interfaz responsiva durante operaciones largas.
 
-Métodos:
+Tecnología
 
-- `update() → OperationResult`
-- `upgrade() → OperationResult`
-- `autoremove() → OperationResult`
-- `clean() → OperationResult`
+- PySide6
+- Qt 6
 
-### CommandRunner
+Restricciones
 
-- `run(command: list[str]) → CommandResult`
+La interfaz gráfica no debe:
 
-### PrivilegeManager
+- Ejecutar directamente comandos "apt-get".
+- Ejecutar directamente "pkexec".
+- Contener las reglas de actualización.
+- Determinar por sí misma si una operación tuvo éxito.
+- Contener lógica específica de APT.
 
-- `execute_privileged(command: list[str]) → CommandResult`
+La GUI solicita una operación y presenta su resultado.
 
-## Flujo de Actualización (CU-03)
+---
 
-Usuario → GUI (botón "Actualizar")
-→ UpdateSystemUseCase.execute()
-→ PrivilegeManager.execute_privileged()
-→ APTService.update()
-→ CommandRunner.run(["apt-get", "update"])
-→ Resultado
-→ ¿Éxito? → APTService.upgrade()
-→ Resultado final
-→ GUI muestra resultado
+4. Application
 
-text
+La capa "Application" contiene los casos de uso de la aplicación.
 
-## Flujo de Errores
+Es la encargada de coordinar las operaciones.
 
-APT → Error → Infrastructure detecta error
-→ Application recibe OperationResult(FAILED)
-→ GUI muestra mensaje de error
+Responsabilidades
 
-text
+- Implementar los casos de uso.
+- Coordinar las operaciones necesarias.
+- Controlar el orden de ejecución.
+- Determinar qué operación debe ejecutarse.
+- Gestionar los resultados recibidos de Infrastructure.
+- Mantener separada la lógica de operación de la interfaz gráfica.
 
-## Reglas de Negocio (RN)
+Ejemplo
 
-### RN-01: Actualización Secuencial
+La actualización completa requiere:
 
-`update` debe ejecutarse antes que `upgrade`. Si `update` falla, `upgrade` no se ejecuta.
+apt-get update
+       │
+       ├── éxito ──► apt-get upgrade
+       │
+       └── fallo ──► detener operación
 
-### RN-02: Resultado Real
+La capa "Application" controla esta secuencia.
 
-El éxito se determina por el código de salida, no por mensajes de texto.
+---
 
-### RN-03: Operaciones Independientes
+5. Core
 
-`autoremove` y `clean` pueden ejecutarse sin `update`/`upgrade`.
+La capa "Core" contiene los elementos básicos utilizados por la aplicación.
 
-### RN-04: Sin Operaciones Posteriores tras Fallo
+Debe mantenerse pequeña.
 
-Si una operación en secuencia falla, las dependientes no se ejecutan.
+Puede contener
 
-### RN-05: Privilegios Mínimos
+- Estados de una operación.
+- Resultados.
+- Modelos simples.
+- Interfaces necesarias para desacoplar la lógica de las implementaciones concretas.
 
-Solicitar privilegios solo cuando la operación lo requiera.
+Ejemplo:
 
-### RN-06: Sin Privilegios, Sin Operación
+core/
+├── operation.py
+├── result.py
+└── interfaces/
+    ├── apt.py
+    └── privileges.py
 
-No ejecutar operación administrativa si no se obtuvieron privilegios.
+Estados de operación
 
-### RN-07: Cancelación
+Las operaciones podrán utilizar estados como:
 
-Si el usuario cancela autenticación, resultado = CANCELLED.
+PENDING
+RUNNING
+SUCCESS
+FAILED
+CANCELLED
 
-### RN-08: Fallo de Elevación
+Estos estados permiten representar claramente el ciclo de vida de una operación.
 
-Informar fallo si el mecanismo de elevación falla.
+Resultados
 
-### RN-09: Dependencia de APT
+Un resultado de operación podrá contener información como:
 
-`apt-get` debe estar disponible.
+- Estado.
+- Código de salida.
+- Mensaje.
+- Salida estándar.
+- Error o salida de error.
 
-### RN-10: Ejecución Controlada
+El modelo exacto se definirá durante la implementación.
 
-Usar argumentos estructurados (no concatenación de strings).
+---
 
-### RN-11: Código de Salida
+6. Infrastructure
 
-Evaluar código de salida y capturar stdout/stderr.
+La capa "Infrastructure" contiene las implementaciones que interactúan directamente con el sistema operativo.
 
-### RN-12: La GUI no contiene lógica de APT
+Componentes principales
 
-La GUI solo pide acciones, el Core las ejecuta.
+infrastructure/
+├── apt/
+├── process/
+├── privileges/
+└── logging/
 
-### RN-13: La GUI no debe bloquearse
+APT
 
-Operaciones APT en hilo separado.
+Será responsable de ejecutar las operaciones relacionadas con APT:
 
-### RN-14: Estado Consistente
+apt-get update
+apt-get upgrade
+apt-get autoremove
+apt-get clean
 
-No permitir iniciar múltiples operaciones simultáneas.
+Process
 
-### RN-15: Resultado Explícito
+Será responsable de la ejecución controlada de procesos mediante "subprocess".
 
-Cada operación termina en SUCCESS, FAILED o CANCELLED.
+Privileges
 
-### RN-16: Autoremove
+Será responsable de solicitar privilegios administrativos cuando una operación los necesite.
 
-Delegar completamente en APT.
+El mecanismo principal será:
 
-### RN-17: Clean
+pkexec
 
-Delegar completamente en APT.
+No se ejecutará toda la aplicación como "root".
 
-### RN-18: No Ejecución Arbitraria
+Logging
 
-El usuario no puede introducir comandos arbitrarios.
+Será responsable del registro de eventos importantes utilizando el módulo estándar:
 
-### RN-19: Separación de Privilegios
+logging
 
-GUI y lógica general no se ejecutan como root.
+---
 
-### RN-20: Sin Credenciales
+7. Flujo general
 
-No almacenar ni registrar contraseñas.
+El flujo normal de una operación será:
 
-### RN-21: Registrar Operaciones Importantes
+Usuario
+   │
+   ▼
+GUI
+   │
+   ▼
+Caso de uso
+   │
+   ▼
+Infrastructure
+   │
+   ├──► privilegios
+   │
+   └──► apt-get
+          │
+          ▼
+        Linux
+          │
+          ▼
+       Resultado
+          │
+          ▼
+      Caso de uso
+          │
+          ▼
+          GUI
+          │
+          ▼
+       Usuario
 
-Inicio, ejecución, resultado, error, cancelación.
+La GUI no necesita conocer los detalles internos de cómo se ejecuta APT.
 
-### RN-22: No Registrar Información Sensible
+---
 
-Logs sin contraseñas, tokens ni credenciales.
+8. Flujo de privilegios
 
-### RN-23: Instalación Mediante Paquete
+Las operaciones que requieren permisos administrativos solicitarán privilegios únicamente cuando sea necesario.
 
-Distribución en .deb.
+Conceptualmente:
 
-### RN-24: Aplicación Independiente del Entorno de Desarrollo
+Usuario inicia operación
+          │
+          ▼
+¿Necesita privilegios?
+       /       \
+     No         Sí
+     │           │
+     ▼           ▼
+Ejecutar      Solicitar
+directamente  privilegios
+                  │
+             ┌────┴────┐
+             │         │
+          Acepta    Cancela/falla
+             │         │
+             ▼         ▼
+          Ejecutar   CANCELLED
+          operación  o FAILED
 
-El usuario final no necesita Python, pip, clonar repositorio, etc.
+La aplicación no almacenará ni registrará contraseñas.
 
-### RN-25: Desinstalación Limpia
+---
 
-Eliminar componentes propios sin afectar archivos personales.
+9. Operaciones largas
 
-## Estructura de Directorios
+Las operaciones de APT pueden tardar varios minutos.
 
-actualizar-linux/
-├── src/
-│ └── actualizar_linux/
-│ ├── presentation/
-│ │ └── gui/
-│ ├── application/
-│ │ ├── update_system.py
-│ │ ├── autoremove.py
-│ │ └── clean.py
-│ ├── core/
-│ │ ├── operation.py
-│ │ ├── result.py
-│ │ └── interfaces/
-│ │ ├── apt.py
-│ │ ├── command_runner.py
-│ │ └── privileges.py
-│ ├── infrastructure/
-│ │ ├── apt/
-│ │ ├── process/
-│ │ ├── privileges/
-│ │ └── logging/
-│ └── main.py
-├── tests/
-│ ├── unit/
-│ └── integration/
-├── packaging/
-│ └── deb/
-├── docs/
-├── .github/
-│ └── workflows/
-├── pyproject.toml
-├── README.md
-└── .gitignore
+Por esta razón, las operaciones largas no deben ejecutarse directamente en el hilo principal de la GUI.
+
+El objetivo es:
+
+GUI
+ │
+ ├── permanece responsiva
+ │
+ └── operación en segundo plano
+          │
+          ▼
+       apt-get
+
+PySide6/Qt proporcionará los mecanismos necesarios para ejecutar estas tareas sin bloquear la interfaz.
+
+La implementación concreta se decidirá durante el desarrollo.
+
+---
+
+10. Dependencias entre componentes
+
+La dirección conceptual de las dependencias será:
+
+Presentation
+      ↓
+Application
+      ↓
+Core
+      ↑
+Infrastructure
+
+La idea principal es que:
+
+- "Presentation" depende de "Application".
+- "Application" utiliza los modelos y contratos necesarios de "Core".
+- "Infrastructure" implementa las interfaces que necesite "Core".
+- "Infrastructure" es la parte que conoce detalles concretos de Linux, APT, "subprocess", "pkexec" y logging.
+
+La GUI no debe depender directamente de los detalles de infraestructura.
+
+---
+
+11. Estructura inicial del proyecto
+
+La estructura inicial propuesta será:
+
+src/
+└── actualizar_linux/
+    ├── presentation/
+    │   └── gui/
+    │
+    ├── application/
+    │   ├── update_system.py
+    │   ├── autoremove.py
+    │   └── clean.py
+    │
+    ├── core/
+    │   ├── operation.py
+    │   ├── result.py
+    │   └── interfaces/
+    │       ├── apt.py
+    │       └── privileges.py
+    │
+    ├── infrastructure/
+    │   ├── apt/
+    │   ├── process/
+    │   ├── privileges/
+    │   └── logging/
+    │
+    └── main.py
+
+Esta estructura es una propuesta inicial y podrá modificarse durante la implementación si alguna parte resulta innecesaria.
+
+No se crearán módulos o clases únicamente para cumplir una estructura teórica.
+
+---
+
+12. Principios arquitectónicos
+
+Actualizar-Linux v2.0 seguirá estos principios:
+
+1. Simplicidad
+   La arquitectura debe ser proporcional al tamaño del proyecto.
+
+2. Separación de responsabilidades
+   La GUI, los casos de uso y la interacción con el sistema no deben mezclarse innecesariamente.
+
+3. Seguridad
+   Los comandos deben ejecutarse de forma controlada y con los privilegios mínimos necesarios.
+
+4. Testabilidad
+   La lógica importante debe poder probarse sin depender constantemente de una instalación real de Linux.
+
+5. Mantenibilidad
+   El código debe ser comprensible y fácil de modificar.
+
+6. No sobreingeniería
+   No se crearán capas, patrones o abstracciones que no aporten una necesidad concreta.
+
+7. Evolución gradual
+   La arquitectura podrá cambiar si las necesidades reales del proyecto lo requieren.
+
+La arquitectura es una guía para organizar el código, no una restricción que obligue a mantener estructuras innecesarias.
